@@ -32,14 +32,21 @@ public class GameItemEntity {
     @Getter
     @Setter
     private boolean isHundredPercent;
+    @Getter
+    @Setter
+    private boolean isFavourite;
 
-    public GameItemEntity(String name, int year, int completedYear, String specialDescription, boolean isCompleted, boolean isHundredPercent) {
+    public GameItemEntity() {
+
+    }
+
+    public GameItemEntity(String name, int year, int completedYear, String specialDescription, boolean isCompleted, boolean isHundredPercent, boolean isFavourite) {
         this.name = name;
         this.year = year;
         this.completedYear = completedYear;
         this.specialDescription = specialDescription;
         this.isCompleted = isCompleted;
         this.isHundredPercent = isHundredPercent;
-
+        this.isFavourite = isFavourite;
     }
 }
