@@ -1,27 +1,26 @@
 package com.backend.gamelibrarybackend.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.*;
 
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
-@Getter
 public class GameItemDTO {
 
     private String name;
-
     private int year;
-
     private int completedYear;
 
-    private String specialDescription;
-
+    @JsonProperty("isCompleted")
     private boolean isCompleted;
 
+    @JsonProperty("isHundredPercent")
     private boolean isHundredPercent;
 
+    @JsonProperty("isFavourite")
     private boolean isFavourite;
+
+    private String specialDescription;
 
 }

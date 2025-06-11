@@ -7,15 +7,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
-@Controller
+import java.util.Collections;
+import java.util.Map;
+
+@RestController
 @CrossOrigin
 @RequestMapping(value = "/admin")
 public class GameAdminController {
+
+    public long fullGameCount = 0;
 
     @Autowired
     private GameItemRepository gameItemRepository;
@@ -23,10 +25,18 @@ public class GameAdminController {
     @PostMapping("/addGameItem")
     public ResponseEntity<?> addGameItem(@RequestBody GameItemDTO gameItemDTO){
 
-        GameItemEntity newItem = new GameItemEntity(gameItemDTO.getName(),gameItemDTO.getYear(),gameItemDTO.getCompletedYear(),gameItemDTO.getSpecialDescription(),gameItemDTO.isCompleted(),gameItemDTO.isHundredPercent(),gameItemDTO.isFavourite());
+        GameItemEntity newItem = new GameItemEntity(gameItemDTO.getName(),gameItemDTO.getYear(),gameItemDTO.getCompletedYear(),gameItemDTO.isCompleted(),gameItemDTO.isHundredPercent(),gameItemDTO.isFavourite(),gameItemDTO.getSpecialDescription());
 
         gameItemRepository.save(newItem);
 
-        return new ResponseEntity<>(gameItemRepository.findAll(),HttpStatus.OK);
+        return new ResponseEntity<>(gameItemRepository.findAll(),HttpStatus.OK) ;
+    }
+
+    @GetMapping("/fullGameCount")
+    public Map<String, Long> getFullGameCount(){
+        fullGameCount = gameItemRepository.count();
+        return Collections.singletonMap("fullGameCount", fullGameCount );
     }
 }
+
+
