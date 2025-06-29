@@ -35,12 +35,15 @@ public class GameItemEntity {
     @Getter
     @Setter
     private String specialDescription;
+    @Getter
+    @Setter
+    private String imageUrl;
 
     public GameItemEntity() {
 
     }
 
-    public GameItemEntity(String name, int year, int completedYear, boolean isCompleted, boolean isHundredPercent, boolean isFavourite , String specialDescription) {
+    public GameItemEntity(String name, int year, int completedYear, boolean isCompleted, boolean isHundredPercent, boolean isFavourite , String specialDescription , String imageUrl) {
         this.name = name;
         this.year = year;
         this.completedYear = completedYear;
@@ -48,5 +51,6 @@ public class GameItemEntity {
         this.isHundredPercent = isHundredPercent;
         this.isFavourite = isFavourite;
         this.specialDescription = specialDescription;
+        this.imageUrl = imageUrl;
     }
 }

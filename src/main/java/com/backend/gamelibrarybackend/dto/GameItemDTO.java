@@ -23,4 +23,7 @@ public class GameItemDTO {
 
     private String specialDescription;
 
+    private String imageUrl;
+
+
 }
