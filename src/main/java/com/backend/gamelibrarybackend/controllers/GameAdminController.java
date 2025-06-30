@@ -48,11 +48,7 @@ public class GameAdminController {
         return Collections.singletonMap("fullGameCount", fullGameCount );
     }
 
-    @GetMapping("/getGamesByCompletedYear/{year}")
-    public ResponseEntity<?> getGamesByCompletedYear(@PathVariable int year) {
-        List<GameItemEntity> games = gameItemRepository.findByCompletedYear(year);
-        return ResponseEntity.ok(games);
-    }
+
 
     @GetMapping("/games/byYear/{year}")
     @Operation(summary = "Get games by completed year")
@@ -73,23 +69,33 @@ public class GameAdminController {
 
     @PostMapping("/uploadImage")
     @CrossOrigin
-    public ResponseEntity<String> uploadImage(@RequestParam("image") MultipartFile image) {
+    public ResponseEntity<?> uploadImage(@RequestParam("image") MultipartFile image) {
         try {
-            String uploadDir = "uploads/";
-            String fileName = image.getOriginalFilename();
+            String projectRoot = System.getProperty("user.dir");
+            String uploadDir = projectRoot + File.separator + "uploads";
+            String fileName = System.currentTimeMillis() + "_" + image.getOriginalFilename();
+
             File uploadPath = new File(uploadDir);
 
-            if (!uploadPath.exists()) uploadPath.mkdirs();
+            if (!uploadPath.exists()) {
+                boolean created = uploadPath.mkdirs();
+                if (!created) {
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create upload directory.");
+                }
+            }
 
-            File destinationFile = new File(uploadDir + fileName);
+            File destinationFile = new File(uploadPath, fileName);
             image.transferTo(destinationFile);
 
             String fileUrl = "http://localhost:8080/uploads/" + fileName;
             return ResponseEntity.ok(fileUrl);
         } catch (IOException e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Image upload failed: " + e.getMessage());
         }
     }
+
+
 
 
 }
