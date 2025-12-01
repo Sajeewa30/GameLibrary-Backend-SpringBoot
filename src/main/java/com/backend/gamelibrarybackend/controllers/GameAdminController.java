@@ -3,6 +3,7 @@ package com.backend.gamelibrarybackend.controllers;
 import com.backend.gamelibrarybackend.dto.GameItemDTO;
 import com.backend.gamelibrarybackend.models.GameItemEntity;
 import com.backend.gamelibrarybackend.repository.GameItemRepository;
+import com.backend.gamelibrarybackend.service.S3StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -11,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -24,6 +24,9 @@ public class GameAdminController {
 
     @Autowired
     private GameItemRepository gameItemRepository;
+
+    @Autowired
+    private S3StorageService s3StorageService;
 
     @PostMapping("/addGameItem")
     @Operation(
@@ -79,25 +82,12 @@ public class GameAdminController {
     @CrossOrigin
     public ResponseEntity<?> uploadImage(@RequestParam("image") MultipartFile image, @RequestAttribute("firebaseUid") String userId) {
         try {
-            String projectRoot = System.getProperty("user.dir");
-            String uploadDir = projectRoot + File.separator + "uploads" + File.separator + userId;
-            String fileName = System.currentTimeMillis() + "_" + image.getOriginalFilename();
-
-            File uploadPath = new File(uploadDir);
-
-            if (!uploadPath.exists()) {
-                boolean created = uploadPath.mkdirs();
-                if (!created) {
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create upload directory.");
-                }
-            }
-
-            File destinationFile = new File(uploadPath, fileName);
-            image.transferTo(destinationFile);
-
-            String fileUrl = "http://localhost:8080/uploads/" + userId + "/" + fileName;
+            String fileUrl = s3StorageService.upload(image, userId);
             return ResponseEntity.ok(fileUrl);
         } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Image upload failed: " + e.getMessage());
+        } catch (RuntimeException e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Image upload failed: " + e.getMessage());
         }
