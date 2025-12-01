@@ -2,8 +2,8 @@ package com.backend.gamelibrarybackend.controllers;
 
 import com.backend.gamelibrarybackend.dto.GameItemDTO;
 import com.backend.gamelibrarybackend.models.GameItemEntity;
-import com.backend.gamelibrarybackend.repository.GameItemRepository;
-import com.backend.gamelibrarybackend.service.S3StorageService;
+import com.backend.gamelibrarybackend.service.FirebaseStorageService;
+import com.backend.gamelibrarybackend.service.GameItemService;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -23,10 +23,10 @@ import java.util.Map;
 public class GameAdminController {
 
     @Autowired
-    private GameItemRepository gameItemRepository;
+    private GameItemService gameItemService;
 
     @Autowired
-    private S3StorageService s3StorageService;
+    private FirebaseStorageService firebaseStorageService;
 
     @PostMapping("/addGameItem")
     @Operation(
@@ -35,27 +35,14 @@ public class GameAdminController {
     )
     public ResponseEntity<?> addGameItem(@RequestBody GameItemDTO gameItemDTO, @RequestAttribute("firebaseUid") String userId){
 
-        GameItemEntity newItem = new GameItemEntity(
-                gameItemDTO.getName(),
-                gameItemDTO.getYear(),
-                gameItemDTO.getCompletedYear(),
-                gameItemDTO.isCompleted(),
-                gameItemDTO.isHundredPercent(),
-                gameItemDTO.isFavourite(),
-                gameItemDTO.getSpecialDescription(),
-                gameItemDTO.getImageUrl(),
-                userId
-        );
-
-        gameItemRepository.save(newItem);
-
-        return new ResponseEntity<>(gameItemRepository.findByUserId(userId),HttpStatus.OK) ;
+        List<GameItemEntity> items = gameItemService.addGame(userId, gameItemDTO);
+        return new ResponseEntity<>(items,HttpStatus.OK) ;
     }
 
     @GetMapping("/fullGameCount")
     @Operation(summary = "Get total number of games", description = "Returns the total number of game entries currently stored in the database.")
     public Map<String, Long> getFullGameCount(@RequestAttribute("firebaseUid") String userId){
-        long fullGameCount = gameItemRepository.countByUserId(userId);
+        long fullGameCount = gameItemService.count(userId);
         return Collections.singletonMap("fullGameCount", fullGameCount );
     }
 
@@ -64,25 +51,25 @@ public class GameAdminController {
     @GetMapping("/games/byYear/{year}")
     @Operation(summary = "Get games by completed year")
     public List<GameItemEntity> getGamesByYear(@PathVariable int year, @RequestAttribute("firebaseUid") String userId) {
-        return gameItemRepository.findByUserIdAndCompletedYear(userId, year);
+        return gameItemService.findByYear(userId, year);
     }
 
 
     @GetMapping("/getFavouriteGames")
     public ResponseEntity<?> getFavouriteGames(@RequestAttribute("firebaseUid") String userId) {
-        return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsFavouriteTrue(userId));
+        return ResponseEntity.ok(gameItemService.findFavourites(userId));
     }
 
     @GetMapping("/getHundredPercentCompletedGames")
     public ResponseEntity<?> getHundredPercentGames(@RequestAttribute("firebaseUid") String userId) {
-        return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsHundredPercentTrue(userId));
+        return ResponseEntity.ok(gameItemService.findHundredPercent(userId));
     }
 
     @PostMapping("/uploadImage")
     @CrossOrigin
     public ResponseEntity<?> uploadImage(@RequestParam("image") MultipartFile image, @RequestAttribute("firebaseUid") String userId) {
         try {
-            String fileUrl = s3StorageService.upload(image, userId);
+            String fileUrl = firebaseStorageService.upload(image, userId);
             return ResponseEntity.ok(fileUrl);
         } catch (IOException e) {
             e.printStackTrace();

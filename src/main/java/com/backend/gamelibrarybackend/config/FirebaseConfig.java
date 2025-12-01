@@ -20,6 +20,9 @@ public class FirebaseConfig {
     @Value("${firebase.admin.credentials.file:}")
     private String firebaseCredentialsFile;
 
+    @Value("${firebase.storage.bucket:}")
+    private String firebaseStorageBucket;
+
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
         List<FirebaseApp> existingApps = FirebaseApp.getApps();
@@ -28,9 +31,14 @@ public class FirebaseConfig {
         }
 
         GoogleCredentials credentials = loadCredentials();
-        FirebaseOptions options = FirebaseOptions.builder()
-                .setCredentials(credentials)
-                .build();
+        FirebaseOptions.Builder builder = FirebaseOptions.builder()
+                .setCredentials(credentials);
+
+        if (StringUtils.hasText(firebaseStorageBucket)) {
+            builder.setStorageBucket(firebaseStorageBucket);
+        }
+
+        FirebaseOptions options = builder.build();
 
         return FirebaseApp.initializeApp(options);
     }

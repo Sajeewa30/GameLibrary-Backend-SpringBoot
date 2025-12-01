@@ -1,25 +1,13 @@
 package com.backend.gamelibrarybackend.models;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
-@Entity
-@Table(name = "game_item_entity", indexes = {
-        @Index(name = "idx_game_item_user_id", columnList = "user_id")
-})
 public class GameItemEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Getter
-    private Long id;
+    @Setter
+    private String id;
     @Getter
     @Setter
     private String name;
@@ -46,7 +34,6 @@ public class GameItemEntity {
     private String imageUrl;
     @Getter
     @Setter
-    @Column(name = "user_id", nullable = false, length = 128)
     private String userId;
 
     public GameItemEntity() {
