@@ -7,8 +7,10 @@ import java.util.List;
 
 public interface GameItemRepository extends JpaRepository<GameItemEntity, Long> {
 
-    List<GameItemEntity> findByCompletedYear(int completedYear);
-    List<GameItemEntity> findByIsFavouriteTrue();
-    List<GameItemEntity> findByIsHundredPercentTrue();
+    List<GameItemEntity> findByUserId(String userId);
+    List<GameItemEntity> findByUserIdAndCompletedYear(String userId, int completedYear);
+    List<GameItemEntity> findByUserIdAndIsFavouriteTrue(String userId);
+    List<GameItemEntity> findByUserIdAndIsHundredPercentTrue(String userId);
+    long countByUserId(String userId);
 
 }
