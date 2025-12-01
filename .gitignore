@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# Firebase credentials (do not commit service account secrets)
+firebase-service-account.json
