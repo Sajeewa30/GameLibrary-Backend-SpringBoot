@@ -65,7 +65,7 @@ public class GameItemService {
 
     private List<GameItemEntity> query(com.google.cloud.firestore.Query query) {
         try {
-            List<DocumentSnapshot> documents = query.get().get().getDocuments();
+            List<com.google.cloud.firestore.QueryDocumentSnapshot> documents = query.get().get().getDocuments();
             return documents.stream()
                     .map(doc -> {
                         GameItemEntity entity = doc.toObject(GameItemEntity.class);
