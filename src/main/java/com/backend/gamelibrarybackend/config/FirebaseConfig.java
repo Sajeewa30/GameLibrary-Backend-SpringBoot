@@ -9,9 +9,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 
+import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Configuration
@@ -22,6 +24,9 @@ public class FirebaseConfig {
 
     @Value("${firebase.storage.bucket:}")
     private String firebaseStorageBucket;
+
+    @Value("${firebase.admin.credentials.json:}")
+    private String firebaseCredentialsJson;
 
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
@@ -49,6 +54,12 @@ public class FirebaseConfig {
     }
 
     private GoogleCredentials loadCredentials() throws IOException {
+        if (StringUtils.hasText(firebaseCredentialsJson)) {
+            try (InputStream jsonStream = new ByteArrayInputStream(firebaseCredentialsJson.getBytes(StandardCharsets.UTF_8))) {
+                return GoogleCredentials.fromStream(jsonStream);
+            }
+        }
+
         String credentialsPath = resolveCredentialsPath();
         if (StringUtils.hasText(credentialsPath)) {
             try (InputStream serviceAccount = new FileInputStream(credentialsPath)) {
