@@ -41,6 +41,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            addCorsHeaders(response);
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing Authorization header");
             return;
         }
@@ -52,7 +53,14 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
             request.setAttribute("firebaseEmail", decodedToken.getEmail());
             filterChain.doFilter(request, response);
         } catch (FirebaseAuthException e) {
+            addCorsHeaders(response);
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid Firebase ID token");
         }
+    }
+
+    private void addCorsHeaders(HttpServletResponse response) {
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, "Authorization, Content-Type, Accept");
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, PATCH, DELETE, OPTIONS");
     }
 }
