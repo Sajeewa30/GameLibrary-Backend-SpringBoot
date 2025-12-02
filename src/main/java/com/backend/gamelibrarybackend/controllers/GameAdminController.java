@@ -4,6 +4,7 @@ import com.backend.gamelibrarybackend.dto.GameItemDTO;
 import com.backend.gamelibrarybackend.models.GameItemEntity;
 import com.backend.gamelibrarybackend.repository.GameItemRepository;
 import com.backend.gamelibrarybackend.service.FirebaseStorageService;
+import com.backend.gamelibrarybackend.service.S3StorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,9 @@ public class GameAdminController {
 
     @Autowired
     private FirebaseStorageService firebaseStorageService;
+
+    @Autowired
+    private S3StorageService s3StorageService;
 
     @PostMapping("/addGameItem")
     @Operation(
@@ -82,8 +86,17 @@ public class GameAdminController {
     @CrossOrigin
     public ResponseEntity<?> uploadImage(@RequestParam("image") MultipartFile image, @RequestAttribute("firebaseUid") String userId) {
         try {
-            String fileUrl = firebaseStorageService.upload(image, userId);
-            return ResponseEntity.ok(fileUrl);
+            // Prefer S3 if configured; fallback to Firebase Storage.
+            if (s3StorageService != null) {
+                try {
+                    String s3Url = s3StorageService.upload(image, userId);
+                    return ResponseEntity.ok(s3Url);
+                } catch (RuntimeException ex) {
+                    // Fall back to Firebase storage if S3 fails.
+                }
+            }
+            String firebaseUrl = firebaseStorageService.upload(image, userId);
+            return ResponseEntity.ok(firebaseUrl);
         } catch (IOException e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Image upload failed: " + e.getMessage());
