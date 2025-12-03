@@ -2,6 +2,8 @@ package com.backend.gamelibrarybackend.controllers;
 
 import com.backend.gamelibrarybackend.dto.GameItemDTO;
 import com.backend.gamelibrarybackend.dto.GameItemUpdateDTO;
+import com.backend.gamelibrarybackend.dto.MediaDeleteDTO;
+import com.backend.gamelibrarybackend.dto.NoteDTO;
 import com.backend.gamelibrarybackend.models.GameItemEntity;
 import com.backend.gamelibrarybackend.repository.GameItemRepository;
 import com.backend.gamelibrarybackend.service.FirebaseStorageService;
@@ -20,6 +22,7 @@ import java.util.HashMap;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 
 @RestController
 @CrossOrigin
@@ -205,8 +208,104 @@ public class GameAdminController {
                         .body(Collections.singletonMap("message", "Game not found")));
     }
 
+    @PutMapping("/games/{id}/note")
+    public ResponseEntity<?> updateNote(@PathVariable Long id,
+                                        @RequestBody NoteDTO payload,
+                                        @RequestAttribute("firebaseUid") String userId) {
+        return gameItemRepository.findByIdAndUserId(id, userId)
+                .map(entity -> {
+                    entity.setNote(payload.getNote());
+                    gameItemRepository.save(entity);
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("message", "Note updated");
+                    response.put("note", entity.getNote());
+                    return ResponseEntity.ok(response);
+                })
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Collections.singletonMap("message", "Game not found")));
+    }
 
+    @PostMapping("/games/{id}/media")
+    public ResponseEntity<?> uploadMedia(@PathVariable Long id,
+                                         @RequestParam("files") MultipartFile[] files,
+                                         @RequestParam("type") String type,
+                                         @RequestAttribute("firebaseUid") String userId) {
+        if (files == null || files.length == 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Collections.singletonMap("message", "No files uploaded."));
+        }
+        if (!"image".equalsIgnoreCase(type) && !"video".equalsIgnoreCase(type)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Collections.singletonMap("message", "Invalid media type."));
+        }
 
+        return gameItemRepository.findByIdAndUserId(id, userId)
+                .map(entity -> {
+                    List<String> urls = new ArrayList<>();
+                    for (MultipartFile file : files) {
+                        try {
+                            if (s3StorageService != null) {
+                                urls.add(s3StorageService.upload(file, userId));
+                            } else {
+                                urls.add(firebaseStorageService.upload(file, userId));
+                            }
+                        } catch (Exception ex) {
+                            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                    .body(Collections.singletonMap("message", "Failed to upload media."));
+                        }
+                    }
+
+                    if ("image".equalsIgnoreCase(type)) {
+                        entity.getGallery().addAll(urls);
+                    } else {
+                        entity.getVideos().addAll(urls);
+                    }
+                    GameItemEntity saved = gameItemRepository.save(entity);
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("message", "Media uploaded");
+                    response.put("gallery", saved.getGallery());
+                    response.put("videos", saved.getVideos());
+                    return ResponseEntity.ok(response);
+                })
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Collections.singletonMap("message", "Game not found")));
+    }
+
+    @DeleteMapping("/games/{id}/media")
+    public ResponseEntity<?> deleteMedia(@PathVariable Long id,
+                                         @RequestBody MediaDeleteDTO payload,
+                                         @RequestAttribute("firebaseUid") String userId) {
+        if (payload.getUrl() == null || payload.getUrl().isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Collections.singletonMap("message", "Media URL is required."));
+        }
+        if (!"image".equalsIgnoreCase(payload.getType()) && !"video".equalsIgnoreCase(payload.getType())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Collections.singletonMap("message", "Invalid media type."));
+        }
+
+        return gameItemRepository.findByIdAndUserId(id, userId)
+                .map(entity -> {
+                    boolean removed;
+                    if ("image".equalsIgnoreCase(payload.getType())) {
+                        removed = entity.getGallery().remove(payload.getUrl());
+                    } else {
+                        removed = entity.getVideos().remove(payload.getUrl());
+                    }
+                    if (!removed) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                                .body(Collections.singletonMap("message", "Media not found on this game."));
+                    }
+                    GameItemEntity saved = gameItemRepository.save(entity);
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("message", "Media deleted");
+                    response.put("gallery", saved.getGallery());
+                    response.put("videos", saved.getVideos());
+                    return ResponseEntity.ok(response);
+                })
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Collections.singletonMap("message", "Game not found")));
+    }
 
 }
 
