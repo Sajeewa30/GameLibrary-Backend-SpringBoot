@@ -59,16 +59,18 @@ public class GameItemEntity {
     @Column(name = "user_id", nullable = false, length = 128)
     private String userId;
     @Getter
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private Instant createdAt;
     @Getter
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
     private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
         Instant now = Instant.now();
-        this.createdAt = now;
+        if (this.createdAt == null) {
+            this.createdAt = now;
+        }
         this.updatedAt = now;
     }
 
