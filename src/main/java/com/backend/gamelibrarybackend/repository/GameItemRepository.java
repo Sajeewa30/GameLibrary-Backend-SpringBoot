@@ -7,10 +7,10 @@ import java.util.List;
 
 public interface GameItemRepository extends JpaRepository<GameItemEntity, Long> {
 
-    List<GameItemEntity> findByUserId(String userId);
-    List<GameItemEntity> findByUserIdAndCompletedYear(String userId, int completedYear);
-    List<GameItemEntity> findByUserIdAndIsFavouriteTrue(String userId);
-    List<GameItemEntity> findByUserIdAndIsHundredPercentTrue(String userId);
+    List<GameItemEntity> findByUserIdOrderByCreatedAtDesc(String userId);
+    List<GameItemEntity> findByUserIdAndCompletedYearOrderByCreatedAtDesc(String userId, int completedYear);
+    List<GameItemEntity> findByUserIdAndIsFavouriteTrueOrderByCreatedAtDesc(String userId);
+    List<GameItemEntity> findByUserIdAndIsHundredPercentTrueOrderByCreatedAtDesc(String userId);
     long countByUserId(String userId);
     boolean existsByUserIdAndNameAndYear(String userId, String name, int year);
 

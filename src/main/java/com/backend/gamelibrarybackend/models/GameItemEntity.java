@@ -7,8 +7,11 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.CreationTimestamp;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.time.Instant;
 
 @Entity
 @Table(
@@ -54,6 +57,10 @@ public class GameItemEntity {
     @Setter
     @Column(name = "user_id", nullable = false, length = 128)
     private String userId;
+    @Getter
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
 
     public GameItemEntity() {
 

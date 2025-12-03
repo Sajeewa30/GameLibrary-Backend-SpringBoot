@@ -91,18 +91,18 @@ public class GameAdminController {
     @GetMapping("/games/byYear/{year}")
     @Operation(summary = "Get games by completed year")
     public List<GameItemEntity> getGamesByYear(@PathVariable int year, @RequestAttribute("firebaseUid") String userId) {
-        return gameItemRepository.findByUserIdAndCompletedYear(userId, year);
+        return gameItemRepository.findByUserIdAndCompletedYearOrderByCreatedAtDesc(userId, year);
     }
 
 
     @GetMapping("/getFavouriteGames")
     public ResponseEntity<?> getFavouriteGames(@RequestAttribute("firebaseUid") String userId) {
-        return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsFavouriteTrue(userId));
+        return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsFavouriteTrueOrderByCreatedAtDesc(userId));
     }
 
     @GetMapping("/getHundredPercentCompletedGames")
     public ResponseEntity<?> getHundredPercentGames(@RequestAttribute("firebaseUid") String userId) {
-        return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsHundredPercentTrue(userId));
+        return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsHundredPercentTrueOrderByCreatedAtDesc(userId));
     }
 
     @PostMapping("/uploadImage")
