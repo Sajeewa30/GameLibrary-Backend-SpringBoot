@@ -95,7 +95,7 @@ public class GameAdminController {
     @GetMapping("/games/byYear/{year}")
     @Operation(summary = "Get games by completed year")
     public List<GameItemEntity> getGamesByYear(@PathVariable int year, @RequestAttribute("firebaseUid") String userId) {
-        return gameItemRepository.findByUserIdAndCompletedYearOrderByCreatedAtDesc(userId, year);
+        return gameItemRepository.findCompletedByYearWithFallback(userId, year);
     }
 
     @GetMapping("/games/toBeCompleted")
