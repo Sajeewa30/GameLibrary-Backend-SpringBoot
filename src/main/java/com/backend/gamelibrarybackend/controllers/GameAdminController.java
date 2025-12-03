@@ -1,6 +1,7 @@
 package com.backend.gamelibrarybackend.controllers;
 
 import com.backend.gamelibrarybackend.dto.GameItemDTO;
+import com.backend.gamelibrarybackend.dto.GameItemUpdateDTO;
 import com.backend.gamelibrarybackend.models.GameItemEntity;
 import com.backend.gamelibrarybackend.repository.GameItemRepository;
 import com.backend.gamelibrarybackend.service.FirebaseStorageService;
@@ -135,6 +136,62 @@ public class GameAdminController {
                 .map(entity -> {
                     gameItemRepository.delete(entity);
                     return ResponseEntity.ok(Collections.singletonMap("message", "Deleted"));
+                })
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Collections.singletonMap("message", "Game not found")));
+    }
+
+    @PutMapping("/games/{id}")
+    public ResponseEntity<?> updateGame(@PathVariable Long id,
+                                        @RequestBody GameItemUpdateDTO payload,
+                                        @RequestAttribute("firebaseUid") String userId) {
+
+        return gameItemRepository.findByIdAndUserId(id, userId)
+                .map(entity -> {
+                    if (payload.getName() == null || payload.getName().isBlank() || payload.getYear() == null || payload.getYear() <= 0) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body(Collections.singletonMap("message", "Name and year are required."));
+                    }
+
+                    if (gameItemRepository.existsByUserIdAndNameAndYearAndIdNot(userId, payload.getName(), payload.getYear(), id)) {
+                        return ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body(Collections.singletonMap("message", "Game already exists for this year."));
+                    }
+
+                    entity.setName(payload.getName());
+                    entity.setYear(payload.getYear());
+                    if (payload.getCompletedYear() != null) {
+                        entity.setCompletedYear(payload.getCompletedYear());
+                    }
+                    if (payload.getIsCompleted() != null) {
+                        entity.setCompleted(payload.getIsCompleted());
+                    }
+                    if (payload.getIsHundredPercent() != null) {
+                        entity.setHundredPercent(payload.getIsHundredPercent());
+                    }
+                    if (payload.getIsFavourite() != null) {
+                        entity.setFavourite(payload.getIsFavourite());
+                    }
+                    if (payload.getSpecialDescription() != null) {
+                        entity.setSpecialDescription(payload.getSpecialDescription());
+                    }
+                    if (payload.getImageUrl() != null) {
+                        entity.setImageUrl(payload.getImageUrl());
+                    }
+
+                    try {
+                        GameItemEntity saved = gameItemRepository.save(entity);
+                        Map<String, Object> response = new HashMap<>();
+                        response.put("message", "Game updated successfully.");
+                        response.put("item", saved);
+                        return ResponseEntity.ok(response);
+                    } catch (DataIntegrityViolationException ex) {
+                        return ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body(Collections.singletonMap("message", "Game already exists for this year."));
+                    } catch (Exception ex) {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                .body(Collections.singletonMap("message", "Unexpected error updating game."));
+                    }
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Collections.singletonMap("message", "Game not found")));

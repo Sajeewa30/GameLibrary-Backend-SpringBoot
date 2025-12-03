@@ -13,6 +13,7 @@ public interface GameItemRepository extends JpaRepository<GameItemEntity, Long> 
     List<GameItemEntity> findByUserIdAndIsHundredPercentTrueOrderByCreatedAtDesc(String userId);
     long countByUserId(String userId);
     boolean existsByUserIdAndNameAndYear(String userId, String name, int year);
+    boolean existsByUserIdAndNameAndYearAndIdNot(String userId, String name, int year, Long id);
     java.util.Optional<GameItemEntity> findByIdAndUserId(Long id, String userId);
 
 }
