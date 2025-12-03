@@ -9,10 +9,15 @@ import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.JoinColumn;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
@@ -58,6 +63,22 @@ public class GameItemEntity {
     @Setter
     @Column(name = "user_id", nullable = false, length = 128)
     private String userId;
+    @Getter
+    @Setter
+    @Column(name = "note", columnDefinition = "TEXT")
+    private String note;
+    @Getter
+    @Setter
+    @ElementCollection
+    @CollectionTable(name = "game_gallery", joinColumns = @JoinColumn(name = "game_id"))
+    @Column(name = "url", length = 512)
+    private List<String> gallery = new ArrayList<>();
+    @Getter
+    @Setter
+    @ElementCollection
+    @CollectionTable(name = "game_videos", joinColumns = @JoinColumn(name = "game_id"))
+    @Column(name = "url", length = 512)
+    private List<String> videos = new ArrayList<>();
     @Getter
     @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
     private Instant createdAt;
