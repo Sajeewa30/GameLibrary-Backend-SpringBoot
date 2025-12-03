@@ -102,7 +102,7 @@ public class GameAdminController {
 
     @GetMapping("/getHundredPercentCompletedGames")
     public ResponseEntity<?> getHundredPercentGames(@RequestAttribute("firebaseUid") String userId) {
-        return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsHundredPercentTrueOrderByCreatedAtDesc(userId));
+            return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsHundredPercentTrueOrderByCreatedAtDesc(userId));
     }
 
     @PostMapping("/uploadImage")
