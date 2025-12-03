@@ -111,7 +111,7 @@ public class GameAdminController {
     @GetMapping("/games/{id}")
     public ResponseEntity<?> getGameById(@PathVariable Long id, @RequestAttribute("firebaseUid") String userId) {
         return gameItemRepository.findByIdAndUserId(id, userId)
-                .map(ResponseEntity::ok)
+                .<ResponseEntity<?>>map(entity -> ResponseEntity.ok(entity))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Collections.singletonMap("message", "Game not found")));
     }
