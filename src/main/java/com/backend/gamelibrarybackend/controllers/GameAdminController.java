@@ -67,6 +67,11 @@ public class GameAdminController {
                 userId
         );
 
+        // If marked completed and no completedYear provided, backfill with the game's year.
+        if (newItem.isCompleted() && newItem.getCompletedYear() == 0) {
+            newItem.setCompletedYear(newItem.getYear());
+        }
+
         try {
             gameItemRepository.save(newItem);
         } catch (DataIntegrityViolationException ex) {
