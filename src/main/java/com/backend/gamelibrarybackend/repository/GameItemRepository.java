@@ -12,5 +12,6 @@ public interface GameItemRepository extends JpaRepository<GameItemEntity, Long> 
     List<GameItemEntity> findByUserIdAndIsFavouriteTrue(String userId);
     List<GameItemEntity> findByUserIdAndIsHundredPercentTrue(String userId);
     long countByUserId(String userId);
+    boolean existsByUserIdAndNameAndYear(String userId, String name, int year);
 
 }

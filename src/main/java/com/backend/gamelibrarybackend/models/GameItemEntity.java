@@ -11,9 +11,15 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "game_item_entity", indexes = {
-        @Index(name = "idx_game_item_user_id", columnList = "user_id")
-})
+@Table(
+        name = "game_item_entity",
+        indexes = {
+                @Index(name = "idx_game_item_user_id", columnList = "user_id")
+        },
+        uniqueConstraints = {
+                @jakarta.persistence.UniqueConstraint(name = "uc_user_name_year", columnNames = {"user_id", "name", "year"})
+        }
+)
 public class GameItemEntity {
 
     @Id

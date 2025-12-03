@@ -5,6 +5,7 @@ import com.backend.gamelibrarybackend.models.GameItemEntity;
 import com.backend.gamelibrarybackend.repository.GameItemRepository;
 import com.backend.gamelibrarybackend.service.FirebaseStorageService;
 import com.backend.gamelibrarybackend.service.S3StorageService;
+import org.springframework.dao.DataIntegrityViolationException;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,16 @@ public class GameAdminController {
     )
     public ResponseEntity<?> addGameItem(@RequestBody GameItemDTO gameItemDTO, @RequestAttribute("firebaseUid") String userId){
 
+        if (gameItemDTO.getName() == null || gameItemDTO.getName().isBlank() || gameItemDTO.getYear() <= 0) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Collections.singletonMap("message", "Name and year are required."));
+        }
+
+        if (gameItemRepository.existsByUserIdAndNameAndYear(userId, gameItemDTO.getName(), gameItemDTO.getYear())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Collections.singletonMap("message", "Game already exists for this year."));
+        }
+
         GameItemEntity newItem = new GameItemEntity(
                 gameItemDTO.getName(),
                 gameItemDTO.getYear(),
@@ -51,9 +63,20 @@ public class GameAdminController {
                 userId
         );
 
-        gameItemRepository.save(newItem);
+        try {
+            gameItemRepository.save(newItem);
+        } catch (DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Collections.singletonMap("message", "Game already exists for this year."));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("message", "Unexpected error saving game."));
+        }
 
-        return new ResponseEntity<>(gameItemRepository.findByUserId(userId),HttpStatus.OK) ;
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Game saved successfully.");
+        response.put("id", newItem.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/fullGameCount")
