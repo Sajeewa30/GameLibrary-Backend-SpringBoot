@@ -176,17 +176,18 @@ public class GameAdminController {
 
                     entity.setName(payload.getName());
                     entity.setYear(payload.getYear());
+                    if (payload.getIsCompleted() != null) {
+                        entity.setCompleted(payload.getIsCompleted());
+                    }
                     if (payload.getCompletedYear() != null) {
                         entity.setCompletedYear(payload.getCompletedYear());
                     }
-                    if (payload.getIsCompleted() != null) {
-                        entity.setCompleted(payload.getIsCompleted());
-                        // If marked completed and no completedYear provided, backfill with year
-                        if (payload.getIsCompleted() && (payload.getCompletedYear() == null)) {
-                            if (entity.getCompletedYear() == 0) {
-                                entity.setCompletedYear(entity.getYear());
-                            }
-                        }
+                    // Ensure completedYear is set when marking as completed
+                    if (entity.isCompleted() && entity.getCompletedYear() == 0) {
+                        int fallbackYear = payload.getCompletedYear() != null
+                                ? payload.getCompletedYear()
+                                : (payload.getYear() != null ? payload.getYear() : entity.getYear());
+                        entity.setCompletedYear(fallbackYear);
                     }
                     if (payload.getIsHundredPercent() != null) {
                         entity.setHundredPercent(payload.getIsHundredPercent());
