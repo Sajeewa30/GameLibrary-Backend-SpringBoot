@@ -129,6 +129,17 @@ public class GameAdminController {
         }
     }
 
+    @DeleteMapping("/games/{id}")
+    public ResponseEntity<?> deleteGame(@PathVariable Long id, @RequestAttribute("firebaseUid") String userId) {
+        return gameItemRepository.findByIdAndUserId(id, userId)
+                .map(entity -> {
+                    gameItemRepository.delete(entity);
+                    return ResponseEntity.ok(Collections.singletonMap("message", "Deleted"));
+                })
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Collections.singletonMap("message", "Game not found")));
+    }
+
 
 
 
