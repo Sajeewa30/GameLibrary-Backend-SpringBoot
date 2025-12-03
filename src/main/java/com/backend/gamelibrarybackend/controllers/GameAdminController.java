@@ -2,7 +2,6 @@ package com.backend.gamelibrarybackend.controllers;
 
 import com.backend.gamelibrarybackend.dto.GameItemDTO;
 import com.backend.gamelibrarybackend.dto.GameItemUpdateDTO;
-import com.backend.gamelibrarybackend.dto.NoteDTO;
 import com.backend.gamelibrarybackend.models.GameItemEntity;
 import com.backend.gamelibrarybackend.repository.GameItemRepository;
 import com.backend.gamelibrarybackend.service.FirebaseStorageService;
@@ -21,7 +20,6 @@ import java.util.HashMap;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.ArrayList;
 
 @RestController
 @CrossOrigin
@@ -105,15 +103,7 @@ public class GameAdminController {
 
     @GetMapping("/getHundredPercentCompletedGames")
     public ResponseEntity<?> getHundredPercentGames(@RequestAttribute("firebaseUid") String userId) {
-        return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsHundredPercentTrueOrderByCreatedAtDesc(userId));
-    }
-
-    @GetMapping("/games/{id}")
-    public ResponseEntity<?> getGameById(@PathVariable Long id, @RequestAttribute("firebaseUid") String userId) {
-        return gameItemRepository.findByIdAndUserId(id, userId)
-                .<ResponseEntity<?>>map(entity -> ResponseEntity.ok(entity))
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Collections.singletonMap("message", "Game not found")));
+            return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsHundredPercentTrueOrderByCreatedAtDesc(userId));
     }
 
     @PostMapping("/uploadImage")
@@ -202,70 +192,6 @@ public class GameAdminController {
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                                 .body(Collections.singletonMap("message", "Unexpected error updating game."));
                     }
-                })
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Collections.singletonMap("message", "Game not found")));
-    }
-
-    @PutMapping("/games/{id}/note")
-    public ResponseEntity<?> updateNote(@PathVariable Long id,
-                                        @RequestBody NoteDTO payload,
-                                        @RequestAttribute("firebaseUid") String userId) {
-        return gameItemRepository.findByIdAndUserId(id, userId)
-                .map(entity -> {
-                    entity.setNote(payload.getNote());
-                    gameItemRepository.save(entity);
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("message", "Note updated");
-                    response.put("note", entity.getNote());
-                    return ResponseEntity.ok(response);
-                })
-                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Collections.singletonMap("message", "Game not found")));
-    }
-
-    @PostMapping("/games/{id}/media")
-    public ResponseEntity<?> uploadMedia(@PathVariable Long id,
-                                         @RequestParam("files") MultipartFile[] files,
-                                         @RequestParam("type") String type,
-                                         @RequestAttribute("firebaseUid") String userId) {
-        if (files == null || files.length == 0) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Collections.singletonMap("message", "No files uploaded."));
-        }
-        if (!"image".equalsIgnoreCase(type) && !"video".equalsIgnoreCase(type)) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Collections.singletonMap("message", "Invalid media type."));
-        }
-
-        return gameItemRepository.findByIdAndUserId(id, userId)
-                .map(entity -> {
-                    List<String> urls = new ArrayList<>();
-                    for (MultipartFile file : files) {
-                        try {
-                            // Use S3 if available; otherwise, fallback to Firebase for images only.
-                            if (s3StorageService != null) {
-                                urls.add(s3StorageService.upload(file, userId));
-                            } else {
-                                urls.add(firebaseStorageService.upload(file, userId));
-                            }
-                        } catch (Exception ex) {
-                            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                    .body(Collections.singletonMap("message", "Failed to upload media."));
-                        }
-                    }
-
-                    if ("image".equalsIgnoreCase(type)) {
-                        entity.getGallery().addAll(urls);
-                    } else {
-                        entity.getVideos().addAll(urls);
-                    }
-                    GameItemEntity saved = gameItemRepository.save(entity);
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("message", "Media uploaded");
-                    response.put("gallery", saved.getGallery());
-                    response.put("videos", saved.getVideos());
-                    return ResponseEntity.ok(response);
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Collections.singletonMap("message", "Game not found")));
