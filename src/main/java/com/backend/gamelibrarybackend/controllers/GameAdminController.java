@@ -106,6 +106,14 @@ public class GameAdminController {
             return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsHundredPercentTrueOrderByCreatedAtDesc(userId));
     }
 
+    @GetMapping("/games/{id}")
+    public ResponseEntity<?> getGameById(@PathVariable Long id, @RequestAttribute("firebaseUid") String userId) {
+        return gameItemRepository.findByIdAndUserId(id, userId)
+                .<ResponseEntity<?>>map(game -> ResponseEntity.ok(game))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Collections.singletonMap("message", "Game not found")));
+    }
+
     @PostMapping("/uploadImage")
     @CrossOrigin
     public ResponseEntity<?> uploadImage(@RequestParam("image") MultipartFile image, @RequestAttribute("firebaseUid") String userId) {
