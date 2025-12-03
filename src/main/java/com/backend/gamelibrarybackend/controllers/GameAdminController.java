@@ -98,6 +98,11 @@ public class GameAdminController {
         return gameItemRepository.findByUserIdAndCompletedYearOrderByCreatedAtDesc(userId, year);
     }
 
+    @GetMapping("/games/toBeCompleted")
+    public ResponseEntity<?> getToBeCompleted(@RequestAttribute("firebaseUid") String userId) {
+        return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsCompletedFalseOrderByCreatedAtDesc(userId));
+    }
+
 
     @GetMapping("/getFavouriteGames")
     public ResponseEntity<?> getFavouriteGames(@RequestAttribute("firebaseUid") String userId) {
