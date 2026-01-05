@@ -1,0 +1,6 @@
+spring.datasource.url=jdbc:mysql://metro.proxy.rlwy.net:46798/railway?sslMode=REQUIRED&allowPublicKeyRetrieval=true&serverTimezone=UTC
+spring.datasource.username=root
+spring.datasource.password=PASTE_DB_PASSWORD_HERE
+openai.api-key=PASTE_OPENAI_KEY_HERE
+openai.model=gpt-4o-mini
+firebase.credentials.b64=PASTE_FIREBASE_BASE64_HERE

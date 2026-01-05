@@ -25,6 +25,9 @@ public class FirebaseConfig {
     @Value("${firebase.storage.bucket:}")
     private String firebaseStorageBucket;
 
+    @Value("${firebase.credentials.b64:}")
+    private String firebaseCredentialsBase64;
+
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
         List<FirebaseApp> existingApps = FirebaseApp.getApps();
@@ -51,7 +54,9 @@ public class FirebaseConfig {
     }
 
     private GoogleCredentials loadCredentials() throws IOException {
-        String base64 = System.getenv("FIREBASE_CREDENTIALS_B64");
+        String base64 = StringUtils.hasText(firebaseCredentialsBase64)
+                ? firebaseCredentialsBase64
+                : System.getenv("FIREBASE_CREDENTIALS_B64");
         if (StringUtils.hasText(base64)) {
             byte[] decoded = Base64.getDecoder().decode(base64);
             try (InputStream serviceAccount = new ByteArrayInputStream(decoded)) {
