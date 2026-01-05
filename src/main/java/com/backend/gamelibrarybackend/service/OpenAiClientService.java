@@ -13,6 +13,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -37,8 +38,12 @@ public class OpenAiClientService {
                                OpenAiProperties openAiProperties,
                                RestTemplateBuilder restTemplateBuilder) {
         this.restTemplate = restTemplateBuilder
-                .setConnectTimeout(java.time.Duration.ofSeconds(10))
-                .setReadTimeout(java.time.Duration.ofSeconds(20))
+                .requestFactory(() -> {
+                    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+                    factory.setConnectTimeout(10_000);
+                    factory.setReadTimeout(20_000);
+                    return factory;
+                })
                 .build();
         this.objectMapper = objectMapper;
         this.openAiProperties = openAiProperties;
