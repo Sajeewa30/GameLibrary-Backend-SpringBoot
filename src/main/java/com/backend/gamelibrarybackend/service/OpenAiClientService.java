@@ -5,11 +5,15 @@ import com.backend.gamelibrarybackend.dto.OpenAiGameItem;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -23,13 +27,19 @@ public class OpenAiClientService {
 
     private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
     private static final String SYSTEM_PROMPT = "You are a video game historian. Return only valid JSON. No extra text.";
+    private static final Logger logger = LoggerFactory.getLogger(OpenAiClientService.class);
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final OpenAiProperties openAiProperties;
 
-    public OpenAiClientService(ObjectMapper objectMapper, OpenAiProperties openAiProperties) {
-        this.restTemplate = new RestTemplate();
+    public OpenAiClientService(ObjectMapper objectMapper,
+                               OpenAiProperties openAiProperties,
+                               RestTemplateBuilder restTemplateBuilder) {
+        this.restTemplate = restTemplateBuilder
+                .setConnectTimeout(java.time.Duration.ofSeconds(10))
+                .setReadTimeout(java.time.Duration.ofSeconds(20))
+                .build();
         this.objectMapper = objectMapper;
         this.openAiProperties = openAiProperties;
     }
@@ -78,8 +88,18 @@ public class OpenAiClientService {
         HttpEntity<ChatRequest> entity = new HttpEntity<>(payload, headers);
         ResponseEntity<ChatResponse> response;
         try {
+            logger.info("Calling OpenAI model={} promptLength={}", model, userPrompt.length());
             response = restTemplate.postForEntity(OPENAI_URL, entity, ChatResponse.class);
+            logger.info("OpenAI response status={}", response.getStatusCode());
+        } catch (HttpStatusCodeException ex) {
+            String body = ex.getResponseBodyAsString();
+            if (body != null && body.length() > 500) {
+                body = body.substring(0, 500) + "...";
+            }
+            logger.warn("OpenAI request failed status={} body={}", ex.getStatusCode(), body);
+            throw new IllegalStateException("OpenAI request failed", ex);
         } catch (RestClientException ex) {
+            logger.warn("OpenAI request failed", ex);
             throw new IllegalStateException("OpenAI request failed", ex);
         }
 
