@@ -38,3 +38,6 @@ out/
 
 # Firebase credentials (do not commit service account secrets)
 firebase-service-account.json
+
+# Local Spring profile overrides (do not commit secrets)
+src/main/resources/application-local.properties
