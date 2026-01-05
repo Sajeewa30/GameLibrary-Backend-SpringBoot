@@ -1,6 +1,7 @@
 package com.backend.gamelibrarybackend.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -12,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Paths;
 
 @Service
+@Profile("!local")
 public class S3StorageService {
 
     private final S3Client s3Client;

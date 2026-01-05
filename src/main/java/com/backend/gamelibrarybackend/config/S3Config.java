@@ -3,6 +3,7 @@ package com.backend.gamelibrarybackend.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.util.StringUtils;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -14,6 +15,8 @@ import software.amazon.awssdk.services.s3.S3Configuration;
 import java.net.URI;
 
 @Configuration
+// TODO: Remove profile gating once local S3 credentials are configured.
+@Profile("!local")
 public class S3Config {
 
     @Value("${storage.s3.access-key:}")

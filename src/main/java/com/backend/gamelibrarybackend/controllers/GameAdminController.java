@@ -35,7 +35,7 @@ public class GameAdminController {
     @Autowired
     private FirebaseStorageService firebaseStorageService;
 
-    @Autowired
+    @Autowired(required = false)
     private S3StorageService s3StorageService;
 
     @PostMapping("/addGameItem")
