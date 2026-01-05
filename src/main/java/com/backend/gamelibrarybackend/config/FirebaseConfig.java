@@ -12,6 +12,8 @@ import org.springframework.util.StringUtils;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ByteArrayInputStream;
+import java.util.Base64;
 import java.util.List;
 
 @Configuration
@@ -49,6 +51,13 @@ public class FirebaseConfig {
     }
 
     private GoogleCredentials loadCredentials() throws IOException {
+        String base64 = System.getenv("FIREBASE_CREDENTIALS_B64");
+        if (StringUtils.hasText(base64)) {
+            byte[] decoded = Base64.getDecoder().decode(base64);
+            try (InputStream serviceAccount = new ByteArrayInputStream(decoded)) {
+                return GoogleCredentials.fromStream(serviceAccount);
+            }
+        }
         String credentialsPath = resolveCredentialsPath();
         if (!StringUtils.hasText(credentialsPath)) {
             throw new IllegalStateException("Firebase credentials path is not set. Set FIREBASE_CREDENTIALS_FILE or GOOGLE_APPLICATION_CREDENTIALS.");
