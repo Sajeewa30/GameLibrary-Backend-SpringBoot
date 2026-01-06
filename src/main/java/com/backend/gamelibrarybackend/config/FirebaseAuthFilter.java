@@ -13,17 +13,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
 
 @Component
 public class FirebaseAuthFilter extends OncePerRequestFilter {
 
     private final FirebaseAuth firebaseAuth;
-    private static final List<String> ALLOWED_ORIGINS = List.of(
-            "https://gametracker-sajeewa.netlify.app",
-            "http://localhost:3000",
-            "http://localhost:5173"
-    );
 
     public FirebaseAuthFilter(FirebaseAuth firebaseAuth) {
         this.firebaseAuth = firebaseAuth;
@@ -33,21 +27,21 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
         // Only protect backend API routes; skip static assets and non-admin paths.
-        return !path.startsWith("/admin");
+        if (!path.startsWith("/admin")) {
+            return true;
+        }
+        // Allow CORS preflight to pass through.
+        return HttpMethod.OPTIONS.matches(request.getMethod());
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        addCorsHeaders(request, response);
-        if (HttpMethod.OPTIONS.matches(request.getMethod())) {
-            response.setStatus(HttpServletResponse.SC_OK);
-            return;
-        }
 
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            addCorsHeaders(response);
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing Authorization header");
             return;
         }
@@ -59,28 +53,14 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
             request.setAttribute("firebaseEmail", decodedToken.getEmail());
             filterChain.doFilter(request, response);
         } catch (FirebaseAuthException e) {
+            addCorsHeaders(response);
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid Firebase ID token");
         }
     }
 
-    private void addCorsHeaders(HttpServletRequest request, HttpServletResponse response) {
-        String origin = request.getHeader(HttpHeaders.ORIGIN);
-        if (origin != null && isAllowedOrigin(origin)) {
-            response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, origin);
-            response.setHeader(HttpHeaders.VARY, HttpHeaders.ORIGIN);
-        }
+    private void addCorsHeaders(HttpServletResponse response) {
+        response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
         response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, "Authorization, Content-Type, Accept");
         response.setHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-        response.setHeader(HttpHeaders.ACCESS_CONTROL_MAX_AGE, "3600");
-    }
-
-    private boolean isAllowedOrigin(String origin) {
-        if (ALLOWED_ORIGINS.contains(origin)) {
-            return true;
-        }
-        if (origin.startsWith("https://")) {
-            return origin.endsWith(".netlify.app") || origin.endsWith(".railway.app");
-        }
-        return false;
     }
 }

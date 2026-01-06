@@ -4,11 +4,9 @@ import com.backend.gamelibrarybackend.dto.GameItemDTO;
 import com.backend.gamelibrarybackend.dto.GameItemUpdateDTO;
 import com.backend.gamelibrarybackend.dto.MediaDeleteDTO;
 import com.backend.gamelibrarybackend.dto.NoteDTO;
-import com.backend.gamelibrarybackend.dto.S3PresignResponse;
 import com.backend.gamelibrarybackend.models.GameItemEntity;
 import com.backend.gamelibrarybackend.repository.GameItemRepository;
 import com.backend.gamelibrarybackend.service.FirebaseStorageService;
-import com.backend.gamelibrarybackend.service.S3PresignService;
 import com.backend.gamelibrarybackend.service.S3StorageService;
 import org.springframework.dao.DataIntegrityViolationException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,9 +37,6 @@ public class GameAdminController {
 
     @Autowired(required = false)
     private S3StorageService s3StorageService;
-
-    @Autowired(required = false)
-    private S3PresignService s3PresignService;
 
     @PostMapping("/addGameItem")
     @Operation(
@@ -154,35 +149,6 @@ public class GameAdminController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Image upload failed: " + e.getMessage());
         }
-    }
-
-    @PostMapping("/s3/presign")
-    public ResponseEntity<?> presignS3Upload(@RequestParam("filename") String filename,
-                                             @RequestParam("contentType") String contentType,
-                                             @RequestParam(value = "expiresSeconds", defaultValue = "900") long expiresSeconds,
-                                             @RequestAttribute("firebaseUid") String userId) {
-        if (s3PresignService == null) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(Collections.singletonMap("message", "S3 presign is not configured"));
-        }
-        if (filename == null || filename.isBlank() || contentType == null || contentType.isBlank()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Collections.singletonMap("message", "filename and contentType are required"));
-        }
-        if (expiresSeconds < 60 || expiresSeconds > 3600) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Collections.singletonMap("message", "expiresSeconds must be between 60 and 3600"));
-        }
-
-        S3PresignService.PresignResult result = s3PresignService
-                .presignPut(userId, filename, contentType, java.time.Duration.ofSeconds(expiresSeconds));
-
-        return ResponseEntity.ok(new S3PresignResponse(
-                result.url(),
-                result.key(),
-                result.publicUrl(),
-                result.expiresInSeconds()
-        ));
     }
 
     @DeleteMapping("/games/{id}")
