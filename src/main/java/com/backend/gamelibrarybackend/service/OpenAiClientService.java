@@ -15,12 +15,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,10 +32,13 @@ public class OpenAiClientService {
     private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
     private static final String SYSTEM_PROMPT = "You are a video game historian. Return only valid JSON. No extra text.";
     private static final Logger logger = LoggerFactory.getLogger(OpenAiClientService.class);
+    private static final int CACHE_COUNT = 50;
+    private static final int MAX_RETRIES = 2;
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final OpenAiProperties openAiProperties;
+    private final Map<Integer, CacheEntry> cache = new ConcurrentHashMap<>();
 
     public OpenAiClientService(ObjectMapper objectMapper,
                                OpenAiProperties openAiProperties,
@@ -40,8 +46,8 @@ public class OpenAiClientService {
         this.restTemplate = restTemplateBuilder
                 .requestFactory(() -> {
                     SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-                    factory.setConnectTimeout(10_000);
-                    factory.setReadTimeout(20_000);
+                    factory.setConnectTimeout(20_000);
+                    factory.setReadTimeout(120_000);
                     return factory;
                 })
                 .build();
@@ -50,12 +56,21 @@ public class OpenAiClientService {
     }
 
     public List<OpenAiGameItem> fetchGames(int year, int count) {
-        String userPrompt = buildUserPrompt(year, count, false);
+        CacheEntry cached = cache.get(year);
+        if (cached != null) {
+            return trimToCount(cached.items, count);
+        }
+
+        String userPrompt = buildUserPrompt(year, CACHE_COUNT, false);
         try {
-            return parseGames(callOpenAi(userPrompt), year, count);
+            List<OpenAiGameItem> items = parseGames(callOpenAi(userPrompt), year, CACHE_COUNT);
+            cache.put(year, new CacheEntry(items));
+            return trimToCount(items, count);
         } catch (IllegalStateException ex) {
-            String strictPrompt = buildUserPrompt(year, count, true);
-            return parseGames(callOpenAi(strictPrompt), year, count);
+            String strictPrompt = buildUserPrompt(year, CACHE_COUNT, true);
+            List<OpenAiGameItem> items = parseGames(callOpenAi(strictPrompt), year, CACHE_COUNT);
+            cache.put(year, new CacheEntry(items));
+            return trimToCount(items, count);
         }
     }
 
@@ -75,7 +90,7 @@ public class OpenAiClientService {
         }
         String model = openAiProperties.getModel();
         if (model == null || model.isBlank()) {
-            model = "gpt-4o-mini";
+            model = "gpt-5.2";
         }
 
         ChatRequest payload = new ChatRequest();
@@ -91,21 +106,35 @@ public class OpenAiClientService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<ChatRequest> entity = new HttpEntity<>(payload, headers);
-        ResponseEntity<ChatResponse> response;
-        try {
-            logger.info("Calling OpenAI model={} promptLength={}", model, userPrompt.length());
-            response = restTemplate.postForEntity(OPENAI_URL, entity, ChatResponse.class);
-            logger.info("OpenAI response status={}", response.getStatusCode());
-        } catch (HttpStatusCodeException ex) {
-            String body = ex.getResponseBodyAsString();
-            if (body != null && body.length() > 500) {
-                body = body.substring(0, 500) + "...";
+        ResponseEntity<ChatResponse> response = null;
+        int attempt = 0;
+        while (true) {
+            try {
+                logger.info("Calling OpenAI model={} promptLength={} attempt={}", model, userPrompt.length(), attempt + 1);
+                response = restTemplate.postForEntity(OPENAI_URL, entity, ChatResponse.class);
+                logger.info("OpenAI response status={}", response.getStatusCode());
+                break;
+            } catch (HttpStatusCodeException ex) {
+                if (ex.getStatusCode().is5xxServerError() && attempt < MAX_RETRIES) {
+                    logger.warn("OpenAI 5xx response, retrying attempt={}", attempt + 2);
+                    sleepBackoff(++attempt);
+                    continue;
+                }
+                String body = ex.getResponseBodyAsString();
+                if (body != null && body.length() > 500) {
+                    body = body.substring(0, 500) + "...";
+                }
+                logger.warn("OpenAI request failed status={} body={}", ex.getStatusCode(), body);
+                throw new IllegalStateException("OpenAI request failed", ex);
+            } catch (RestClientException ex) {
+                if (isRetryable(ex) && attempt < MAX_RETRIES) {
+                    logger.warn("OpenAI request timed out, retrying attempt={}", attempt + 2);
+                    sleepBackoff(++attempt);
+                    continue;
+                }
+                logger.warn("OpenAI request failed", ex);
+                throw new IllegalStateException("OpenAI request failed", ex);
             }
-            logger.warn("OpenAI request failed status={} body={}", ex.getStatusCode(), body);
-            throw new IllegalStateException("OpenAI request failed", ex);
-        } catch (RestClientException ex) {
-            logger.warn("OpenAI request failed", ex);
-            throw new IllegalStateException("OpenAI request failed", ex);
         }
 
         ChatResponse body = response.getBody();
@@ -136,6 +165,16 @@ public class OpenAiClientService {
                 .collect(Collectors.toList());
     }
 
+    private List<OpenAiGameItem> trimToCount(List<OpenAiGameItem> items, int count) {
+        if (items == null || items.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return items.stream()
+                .filter(Objects::nonNull)
+                .limit(count)
+                .collect(Collectors.toList());
+    }
+
     private OpenAiGameItem normalize(OpenAiGameItem item, int year) {
         List<String> platforms = safeList(item.getPlatforms());
         List<String> genres = safeList(item.getGenres());
@@ -158,6 +197,30 @@ public class OpenAiClientService {
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
                 .collect(Collectors.toList());
+    }
+
+    private boolean isRetryable(RestClientException ex) {
+        if (ex instanceof ResourceAccessException) {
+            return true;
+        }
+        Throwable cause = ex.getCause();
+        return cause instanceof java.net.SocketTimeoutException;
+    }
+
+    private void sleepBackoff(int attempt) {
+        try {
+            Thread.sleep(500L * attempt);
+        } catch (InterruptedException interruptedException) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private static final class CacheEntry {
+        private final List<OpenAiGameItem> items;
+
+        private CacheEntry(List<OpenAiGameItem> items) {
+            this.items = items;
+        }
     }
 
     @Data
