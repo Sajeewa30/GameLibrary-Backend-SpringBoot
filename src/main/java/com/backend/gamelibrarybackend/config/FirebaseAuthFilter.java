@@ -33,11 +33,7 @@ public class FirebaseAuthFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getServletPath();
         // Only protect backend API routes; skip static assets and non-admin paths.
-        if (!path.startsWith("/admin")) {
-            return true;
-        }
-        // Allow CORS preflight to pass through.
-        return HttpMethod.OPTIONS.matches(request.getMethod());
+        return !path.startsWith("/admin");
     }
 
     @Override
