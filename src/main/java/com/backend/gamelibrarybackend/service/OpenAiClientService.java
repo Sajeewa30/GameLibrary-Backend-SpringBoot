@@ -32,7 +32,7 @@ public class OpenAiClientService {
     private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
     private static final String SYSTEM_PROMPT = "You are a video game historian. Return only valid JSON. No extra text.";
     private static final Logger logger = LoggerFactory.getLogger(OpenAiClientService.class);
-    private static final int CACHE_COUNT = 100;
+    private static final int CACHE_COUNT = 50;
     private static final int MAX_RETRIES = 2;
 
     private final RestTemplate restTemplate;
@@ -76,6 +76,7 @@ public class OpenAiClientService {
 
     private String buildUserPrompt(int year, int count, boolean strict) {
         String prompt = "List the top " + count + " most popular and notable video games released in " + year + ".\n"
+                + "Only include games that actually released in " + year + " (do not guess or invent).\n"
                 + "Exclude mobile-only games (multi-platform games that include mobile are OK).\n"
                 + "Return JSON array items with fields: name, releaseYear, summary, platforms, genres.\n"
                 + "Keep summary under 50 characters and make it a short description of the game.\n"
