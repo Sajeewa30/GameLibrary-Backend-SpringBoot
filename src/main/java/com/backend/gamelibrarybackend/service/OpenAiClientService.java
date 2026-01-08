@@ -61,34 +61,24 @@ public class OpenAiClientService {
             return trimToCount(cached.items, count);
         }
 
-        String userPrompt = buildUserPrompt(year, CACHE_COUNT, false, true);
+        String userPrompt = buildUserPrompt(year, CACHE_COUNT, false);
         try {
             List<OpenAiGameItem> items = parseGames(callOpenAi(userPrompt), year, CACHE_COUNT);
-            if (items.isEmpty()) {
-                String relaxedPrompt = buildUserPrompt(year, CACHE_COUNT, false, false);
-                items = parseGames(callOpenAi(relaxedPrompt), year, CACHE_COUNT);
-            }
             cache.put(year, new CacheEntry(items));
             return trimToCount(items, count);
         } catch (IllegalStateException ex) {
-            String strictPrompt = buildUserPrompt(year, CACHE_COUNT, true, true);
+            String strictPrompt = buildUserPrompt(year, CACHE_COUNT, true);
             List<OpenAiGameItem> items = parseGames(callOpenAi(strictPrompt), year, CACHE_COUNT);
-            if (items.isEmpty()) {
-                String relaxedStrictPrompt = buildUserPrompt(year, CACHE_COUNT, true, false);
-                items = parseGames(callOpenAi(relaxedStrictPrompt), year, CACHE_COUNT);
-            }
             cache.put(year, new CacheEntry(items));
             return trimToCount(items, count);
         }
     }
 
-    private String buildUserPrompt(int year, int count, boolean strict, boolean requireAllPlatforms) {
+    private String buildUserPrompt(int year, int count, boolean strict) {
         String prompt = "List the top " + count + " most popular and notable video games released in " + year + ".\n"
                 + "Only include games that actually released in " + year + " (do not guess or invent).\n"
                 + "Exclude Nintendo-only games.\n"
-                + (requireAllPlatforms
-                ? "Only include games available on PC, PlayStation, and Xbox (all three).\n"
-                : "Only include games available on PC, PlayStation, or Xbox (at least one).\n")
+                + "Only include games available on PC, PlayStation, or Xbox (at least one).\n"
                 + "Exclude mobile-only games (multi-platform games that include mobile are OK).\n"
                 + "Return JSON array items with fields: name, releaseYear, summary, platforms, genres.\n"
                 + "Keep summary under 50 characters and make it a short description of the game.\n"
