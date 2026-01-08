@@ -26,15 +26,15 @@ public class PublicAiController {
 
     @GetMapping("/games")
     public OpenAiPublicResponse getGames(@RequestParam int year,
-                                         @RequestParam(defaultValue = "50") int count,
+                                         @RequestParam(defaultValue = "100") int count,
                                          @RequestParam(required = false) String search) {
         int currentYear = Year.now().getValue();
         if (year < 1975 || year > currentYear) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "year must be between 1975 and " + currentYear);
         }
-        if (count < 1 || count > 50) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "count must be between 1 and 50");
+        if (count < 1 || count > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "count must be between 1 and 100");
         }
 
         List<OpenAiGameItem> items;
