@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 public class OpenAiClientService {
 
     private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-    private static final String SYSTEM_PROMPT = "You are a video game historian. Return only valid JSON. No extra text.";
+    private static final String SYSTEM_PROMPT = "You are a video game historian. Exclude Nintendo-only and mobile-only games. Only include games available on PC and/or PlayStation and/or Xbox. Return only valid JSON. No extra text.";
     private static final Logger logger = LoggerFactory.getLogger(OpenAiClientService.class);
     private static final int CACHE_COUNT = 100;
     private static final int MAX_RETRIES = 2;
