@@ -29,9 +29,10 @@ public class PublicAiController {
                                          @RequestParam(defaultValue = "100") int count,
                                          @RequestParam(required = false) String search) {
         int currentYear = Year.now().getValue();
-        if (year < 1975 || year > currentYear) {
+        int maxYear = currentYear + 2;
+        if (year < 1975 || year > maxYear) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "year must be between 1975 and " + currentYear);
+                    "year must be between 1975 and " + maxYear);
         }
         if (count < 1 || count > 100) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "count must be between 1 and 100");
