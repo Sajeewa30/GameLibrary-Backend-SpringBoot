@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 public class OpenAiClientService {
 
     private static final String OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-    private static final String SYSTEM_PROMPT = "You are a video game historian. Exclude Nintendo-only and mobile-only games. Only include games available on PC and/or PlayStation and/or Xbox. Return only valid JSON. No extra text.";
+    private static final String SYSTEM_PROMPT = "You are a video game historian. Only include games released in the specified year. Exclude Nintendo-only and mobile-only games. Only include games available on PC and/or PlayStation and/or Xbox. Return only valid JSON. No extra text.";
     private static final Logger logger = LoggerFactory.getLogger(OpenAiClientService.class);
     private static final int CACHE_COUNT = 100;
     private static final int MAX_RETRIES = 2;
@@ -75,11 +75,11 @@ public class OpenAiClientService {
     }
 
     private String buildUserPrompt(int year, int count, boolean strict) {
-        String prompt = "List the top " + count + " most popular and notable video games released in " + year + ".\n"
+        String prompt = "List up to " + count + " of the most popular and major video game releases in " + year + ".\n"
                 + "Only include games that actually released in " + year + " (do not guess or invent).\n"
-                + "Exclude Nintendo-only games.\n"
-                + "Only include games available on PC, PlayStation, or Xbox (at least one).\n"
-                + "Exclude mobile-only games (multi-platform games that include mobile are OK).\n"
+                + "Only include games available on PC and/or PlayStation and/or Xbox (at least one).\n"
+                + "Exclude Nintendo-only and mobile-only games.\n"
+                + "If fewer than " + count + " match, return fewer.\n"
                 + "Return JSON array items with fields: name, releaseYear, summary, platforms, genres.\n"
                 + "Keep summary under 50 characters and make it a short description of the game.\n"
                 + "Use consistent releaseYear " + year + " only.";
