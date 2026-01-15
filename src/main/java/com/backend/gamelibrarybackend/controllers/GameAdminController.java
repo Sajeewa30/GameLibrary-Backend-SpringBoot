@@ -11,6 +11,8 @@ import com.backend.gamelibrarybackend.service.S3StorageService;
 import org.springframework.dao.DataIntegrityViolationException;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestAttribute;
@@ -120,6 +122,7 @@ public class GameAdminController {
     }
 
     @GetMapping("/games/{id}")
+    @Cacheable(value = "gameDetail", key = "#userId + ':' + #id")
     public ResponseEntity<?> getGameById(@PathVariable Long id, @RequestAttribute("firebaseUid") String userId) {
         return gameItemRepository.findByIdAndUserId(id, userId)
                 .<ResponseEntity<?>>map(game -> ResponseEntity.ok(game))
@@ -152,6 +155,7 @@ public class GameAdminController {
     }
 
     @DeleteMapping("/games/{id}")
+    @CacheEvict(value = "gameDetail", key = "#userId + ':' + #id")
     public ResponseEntity<?> deleteGame(@PathVariable Long id, @RequestAttribute("firebaseUid") String userId) {
         return gameItemRepository.findByIdAndUserId(id, userId)
                 .map(entity -> {
@@ -163,6 +167,7 @@ public class GameAdminController {
     }
 
     @PutMapping("/games/{id}")
+    @CacheEvict(value = "gameDetail", key = "#userId + ':' + #id")
     public ResponseEntity<?> updateGame(@PathVariable Long id,
                                         @RequestBody GameItemUpdateDTO payload,
                                         @RequestAttribute("firebaseUid") String userId) {
@@ -226,6 +231,7 @@ public class GameAdminController {
     }
 
     @PutMapping("/games/{id}/note")
+    @CacheEvict(value = "gameDetail", key = "#userId + ':' + #id")
     public ResponseEntity<?> updateNote(@PathVariable Long id,
                                         @RequestBody NoteDTO payload,
                                         @RequestAttribute("firebaseUid") String userId) {
@@ -243,6 +249,7 @@ public class GameAdminController {
     }
 
     @PostMapping("/games/{id}/media")
+    @CacheEvict(value = "gameDetail", key = "#userId + ':' + #id")
     public ResponseEntity<?> uploadMedia(@PathVariable Long id,
                                          @RequestParam("files") MultipartFile[] files,
                                          @RequestParam("type") String type,
@@ -289,6 +296,7 @@ public class GameAdminController {
     }
 
     @DeleteMapping("/games/{id}/media")
+    @CacheEvict(value = "gameDetail", key = "#userId + ':' + #id")
     public ResponseEntity<?> deleteMedia(@PathVariable Long id,
                                          @RequestBody MediaDeleteDTO payload,
                                          @RequestAttribute("firebaseUid") String userId) {
