@@ -35,6 +35,9 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'com.mysql:mysql-connector-j'
+	// Local-first storage: a single-file SQLite database + its Hibernate dialect.
+	runtimeOnly 'org.xerial:sqlite-jdbc'
+	implementation 'org.hibernate.orm:hibernate-community-dialects'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

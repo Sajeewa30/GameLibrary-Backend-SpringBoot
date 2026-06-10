@@ -41,3 +41,14 @@ firebase-service-account.json
 
 # Local Spring profile overrides (do not commit secrets)
 src/main/resources/application-local.properties
+
+# Local-first runtime data — kept out of the code repo; back these up separately
+# with scripts/backup.ps1 (the .zip is your portable, restorable copy).
+/data/*.db
+/data/*.db-journal
+/data/*.db-wal
+/data/*.db-shm
+/uploads/*
+!/uploads/.gitkeep
+/backups/
+games-export.json

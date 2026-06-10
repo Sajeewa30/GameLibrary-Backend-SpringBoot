@@ -82,10 +82,12 @@ public class GameItemEntity {
     @Column(name = "url", length = 512)
     private List<String> videos = new ArrayList<>();
     @Getter
-    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Setter
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
     @Getter
-    @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+    @Setter
+    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
     @PrePersist

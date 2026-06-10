@@ -1,0 +1,2 @@
+# Keeps the uploads/ folder in the repo. Uploaded images/videos live here at
+# runtime but are NOT committed — back them up with scripts/backup.ps1.

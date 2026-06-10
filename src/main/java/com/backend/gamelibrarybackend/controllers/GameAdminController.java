@@ -7,6 +7,7 @@ import com.backend.gamelibrarybackend.dto.NoteDTO;
 import com.backend.gamelibrarybackend.models.GameItemEntity;
 import com.backend.gamelibrarybackend.repository.GameItemRepository;
 import com.backend.gamelibrarybackend.service.FirebaseStorageService;
+import com.backend.gamelibrarybackend.service.LocalStorageService;
 import com.backend.gamelibrarybackend.service.S3StorageService;
 import org.springframework.dao.DataIntegrityViolationException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,6 +40,9 @@ public class GameAdminController {
 
     @Autowired(required = false)
     private S3StorageService s3StorageService;
+
+    @Autowired(required = false)
+    private LocalStorageService localStorageService;
 
     @PostMapping("/addGameItem")
     @Operation(
@@ -134,7 +138,10 @@ public class GameAdminController {
     @CrossOrigin
     public ResponseEntity<?> uploadImage(@RequestParam("image") MultipartFile image, @RequestAttribute("firebaseUid") String userId) {
         try {
-            // Prefer S3 if configured; fallback to Firebase Storage.
+            // Prefer local on-disk storage (local profile); then S3; then Firebase.
+            if (localStorageService != null) {
+                return ResponseEntity.ok(localStorageService.upload(image, userId));
+            }
             if (s3StorageService != null) {
                 try {
                     String s3Url = s3StorageService.upload(image, userId);
@@ -268,7 +275,9 @@ public class GameAdminController {
                     List<String> urls = new ArrayList<>();
                     for (MultipartFile file : files) {
                         try {
-                            if (s3StorageService != null) {
+                            if (localStorageService != null) {
+                                urls.add(localStorageService.upload(file, userId));
+                            } else if (s3StorageService != null) {
                                 urls.add(s3StorageService.upload(file, userId));
                             } else {
                                 urls.add(firebaseStorageService.upload(file, userId));

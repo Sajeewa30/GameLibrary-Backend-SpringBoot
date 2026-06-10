@@ -1,0 +1,2 @@
+# Keeps the data/ folder in the repo. The SQLite database (gamelibrary.db) lives
+# here at runtime but is NOT committed — back it up with scripts/backup.ps1.

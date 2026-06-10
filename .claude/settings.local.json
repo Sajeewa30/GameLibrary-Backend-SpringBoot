@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(./gradlew compileJava)",
-      "Bash(./gradlew clean *)"
+      "Bash(./gradlew clean *)",
+      "PowerShell(.\\\\gradlew.bat -q dependencyInsight --configuration runtimeClasspath --dependency sqlite-jdbc --console=plain; Write-Host \"----- hibernate-community-dialects -----\"; .\\\\gradlew.bat -q dependencyInsight --configuration runtimeClasspath --dependency hibernate-community-dialects --console=plain)"
     ]
   }
 }
