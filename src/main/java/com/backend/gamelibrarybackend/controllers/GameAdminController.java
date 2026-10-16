@@ -148,6 +148,21 @@ public class GameAdminController {
         }
     }
 
+    // Discards a cover uploaded via /uploadImage whose game was then never saved
+    // (e.g. a duplicate name), so it doesn't stay orphaned on disk.
+    @DeleteMapping("/uploadImage")
+    public ResponseEntity<?> discardUploadedImage(@RequestBody MediaDeleteDTO payload, @RequestAttribute("firebaseUid") String userId) {
+        if (payload.getUrl() == null || payload.getUrl().isBlank()) {
+            return badRequest("Image URL is required.");
+        }
+        if (gameItemRepository.existsByUserIdAndImageUrl(userId, payload.getUrl())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Collections.singletonMap("message", "Image is still used by a game."));
+        }
+        localStorageService.delete(payload.getUrl(), userId);
+        return ResponseEntity.ok(Collections.singletonMap("message", "Image discarded"));
+    }
+
     @DeleteMapping("/games/{id}")
     @CacheEvict(value = "gameDetail", key = "#userId + ':' + #id")
     public ResponseEntity<?> deleteGame(@PathVariable Long id, @RequestAttribute("firebaseUid") String userId) {

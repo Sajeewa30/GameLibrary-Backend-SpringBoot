@@ -25,6 +25,7 @@ public interface GameItemRepository extends JpaRepository<GameItemEntity, Long> 
     long countByUserId(String userId);
     boolean existsByUserIdAndNameAndYear(String userId, String name, int year);
     boolean existsByUserIdAndNameAndYearAndIdNot(String userId, String name, int year, Long id);
+    boolean existsByUserIdAndImageUrl(String userId, String imageUrl);
     java.util.Optional<GameItemEntity> findByIdAndUserId(Long id, String userId);
 
 }
