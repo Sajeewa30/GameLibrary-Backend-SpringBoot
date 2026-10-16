@@ -16,7 +16,7 @@ import java.util.List;
 
 /**
  * One-shot data mover for migrating the game library between databases — used to
- * lift every game out of the old Railway MySQL and into the new local SQLite file.
+ * move every game from one database to another (originally Railway MySQL -> SQLite).
  *
  * It does nothing during normal operation. It acts only when one of these program
  * arguments is supplied, then shuts the JVM down:
@@ -28,7 +28,7 @@ import java.util.List;
  *
  * Both directions go through JPA, so types (timestamps, booleans, and the gallery
  * and video collections) are converted correctly regardless of the underlying DB.
- * Driven by scripts/migrate-from-railway.ps1 — see LOCAL-SETUP.md.
+ * See LOCAL-SETUP.md for the commands.
  */
 @Component
 public class DataMigrationRunner implements CommandLineRunner {

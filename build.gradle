@@ -31,10 +31,8 @@ dependencies {
 	implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
 	implementation 'com.google.firebase:firebase-admin:9.4.1'
-	implementation 'software.amazon.awssdk:s3:2.25.66'
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	runtimeOnly 'com.mysql:mysql-connector-j'
 	// Local-first storage: a single-file SQLite database + its Hibernate dialect.
 	runtimeOnly 'org.xerial:sqlite-jdbc'
 	implementation 'org.hibernate.orm:hibernate-community-dialects'

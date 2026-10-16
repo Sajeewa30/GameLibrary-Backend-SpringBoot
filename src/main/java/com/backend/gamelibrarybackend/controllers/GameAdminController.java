@@ -6,9 +6,9 @@ import com.backend.gamelibrarybackend.dto.MediaDeleteDTO;
 import com.backend.gamelibrarybackend.dto.NoteDTO;
 import com.backend.gamelibrarybackend.models.GameItemEntity;
 import com.backend.gamelibrarybackend.repository.GameItemRepository;
-import com.backend.gamelibrarybackend.service.FirebaseStorageService;
 import com.backend.gamelibrarybackend.service.LocalStorageService;
-import com.backend.gamelibrarybackend.service.S3StorageService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,27 +21,26 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Year;
 import java.util.HashMap;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ArrayList;
 
 @RestController
-@CrossOrigin
 @RequestMapping(value = "/admin")
 public class GameAdminController {
+
+    private static final Logger log = LoggerFactory.getLogger(GameAdminController.class);
+
+    private static final int MIN_YEAR = 1950;
 
     @Autowired
     private GameItemRepository gameItemRepository;
 
     @Autowired
-    private FirebaseStorageService firebaseStorageService;
-
-    @Autowired(required = false)
-    private S3StorageService s3StorageService;
-
-    @Autowired(required = false)
     private LocalStorageService localStorageService;
 
     @PostMapping("/addGameItem")
@@ -51,18 +50,19 @@ public class GameAdminController {
     )
     public ResponseEntity<?> addGameItem(@RequestBody GameItemDTO gameItemDTO, @RequestAttribute("firebaseUid") String userId){
 
-        if (gameItemDTO.getName() == null || gameItemDTO.getName().isBlank() || gameItemDTO.getYear() <= 0) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Collections.singletonMap("message", "Name and year are required."));
+        String name = trimToNull(gameItemDTO.getName());
+        String validationError = validate(name, gameItemDTO.getYear(), gameItemDTO.getCompletedYear());
+        if (validationError != null) {
+            return badRequest(validationError);
         }
 
-        if (gameItemRepository.existsByUserIdAndNameAndYear(userId, gameItemDTO.getName(), gameItemDTO.getYear())) {
+        if (gameItemRepository.existsByUserIdAndNameAndYear(userId, name, gameItemDTO.getYear())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Collections.singletonMap("message", "Game already exists for this year."));
         }
 
         GameItemEntity newItem = new GameItemEntity(
-                gameItemDTO.getName(),
+                name,
                 gameItemDTO.getYear(),
                 gameItemDTO.getCompletedYear(),
                 gameItemDTO.isCompleted(),
@@ -84,6 +84,7 @@ public class GameAdminController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Collections.singletonMap("message", "Game already exists for this year."));
         } catch (Exception ex) {
+            log.error("Failed to save game", ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Collections.singletonMap("message", "Unexpected error saving game."));
         }
@@ -125,8 +126,10 @@ public class GameAdminController {
             return ResponseEntity.ok(gameItemRepository.findByUserIdAndIsHundredPercentTrueOrderByCreatedAtDesc(userId));
     }
 
+    // Only cache hits: SQLite can reuse a deleted game's id, and a cached 404
+    // would hide the new game for the cache TTL.
     @GetMapping("/games/{id}")
-    @Cacheable(value = "gameDetail", key = "#userId + ':' + #id")
+    @Cacheable(value = "gameDetail", key = "#userId + ':' + #id", unless = "#result.statusCode.value() != 200")
     public ResponseEntity<?> getGameById(@PathVariable Long id, @RequestAttribute("firebaseUid") String userId) {
         return gameItemRepository.findByIdAndUserId(id, userId)
                 .<ResponseEntity<?>>map(game -> ResponseEntity.ok(game))
@@ -135,29 +138,13 @@ public class GameAdminController {
     }
 
     @PostMapping("/uploadImage")
-    @CrossOrigin
     public ResponseEntity<?> uploadImage(@RequestParam("image") MultipartFile image, @RequestAttribute("firebaseUid") String userId) {
         try {
-            // Prefer local on-disk storage (local profile); then S3; then Firebase.
-            if (localStorageService != null) {
-                return ResponseEntity.ok(localStorageService.upload(image, userId));
-            }
-            if (s3StorageService != null) {
-                try {
-                    String s3Url = s3StorageService.upload(image, userId);
-                    return ResponseEntity.ok(s3Url);
-                } catch (RuntimeException ex) {
-                    // Fall back to Firebase storage if S3 fails.
-                }
-            }
-            String firebaseUrl = firebaseStorageService.upload(image, userId);
-            return ResponseEntity.ok(firebaseUrl);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Image upload failed: " + e.getMessage());
-        } catch (RuntimeException e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Image upload failed: " + e.getMessage());
+            return ResponseEntity.ok(localStorageService.upload(image, userId));
+        } catch (IOException | RuntimeException e) {
+            log.error("Image upload failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("message", "Image upload failed."));
         }
     }
 
@@ -166,7 +153,12 @@ public class GameAdminController {
     public ResponseEntity<?> deleteGame(@PathVariable Long id, @RequestAttribute("firebaseUid") String userId) {
         return gameItemRepository.findByIdAndUserId(id, userId)
                 .map(entity -> {
+                    List<String> files = new ArrayList<>();
+                    files.add(entity.getImageUrl());
+                    files.addAll(entity.getGallery());
+                    files.addAll(entity.getVideos());
                     gameItemRepository.delete(entity);
+                    files.forEach(url -> localStorageService.delete(url, userId));
                     return ResponseEntity.ok(Collections.singletonMap("message", "Deleted"));
                 })
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -181,18 +173,21 @@ public class GameAdminController {
 
         return gameItemRepository.findByIdAndUserId(id, userId)
                 .map(entity -> {
-                    if (payload.getName() == null || payload.getName().isBlank() || payload.getYear() == null || payload.getYear() <= 0) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                                .body(Collections.singletonMap("message", "Name and year are required."));
+                    String name = trimToNull(payload.getName());
+                    int year = payload.getYear() != null ? payload.getYear() : 0;
+                    int completedYear = payload.getCompletedYear() != null ? payload.getCompletedYear() : 0;
+                    String validationError = validate(name, year, completedYear);
+                    if (validationError != null) {
+                        return badRequest(validationError);
                     }
 
-                    if (gameItemRepository.existsByUserIdAndNameAndYearAndIdNot(userId, payload.getName(), payload.getYear(), id)) {
+                    if (gameItemRepository.existsByUserIdAndNameAndYearAndIdNot(userId, name, year, id)) {
                         return ResponseEntity.status(HttpStatus.CONFLICT)
                                 .body(Collections.singletonMap("message", "Game already exists for this year."));
                     }
 
-                    entity.setName(payload.getName());
-                    entity.setYear(payload.getYear());
+                    entity.setName(name);
+                    entity.setYear(year);
                     if (payload.getIsCompleted() != null) {
                         entity.setCompleted(payload.getIsCompleted());
                     }
@@ -201,10 +196,7 @@ public class GameAdminController {
                     }
                     // Ensure completedYear is set when marking as completed
                     if (entity.isCompleted() && entity.getCompletedYear() == 0) {
-                        int fallbackYear = payload.getCompletedYear() != null
-                                ? payload.getCompletedYear()
-                                : (payload.getYear() != null ? payload.getYear() : entity.getYear());
-                        entity.setCompletedYear(fallbackYear);
+                        entity.setCompletedYear(entity.getYear());
                     }
                     if (payload.getIsHundredPercent() != null) {
                         entity.setHundredPercent(payload.getIsHundredPercent());
@@ -215,12 +207,17 @@ public class GameAdminController {
                     if (payload.getSpecialDescription() != null) {
                         entity.setSpecialDescription(payload.getSpecialDescription());
                     }
+                    String previousImageUrl = entity.getImageUrl();
                     if (payload.getImageUrl() != null) {
                         entity.setImageUrl(payload.getImageUrl());
                     }
 
                     try {
                         GameItemEntity saved = gameItemRepository.save(entity);
+                        // The old cover is no longer referenced once the new one is saved.
+                        if (!Objects.equals(previousImageUrl, saved.getImageUrl())) {
+                            localStorageService.delete(previousImageUrl, userId);
+                        }
                         Map<String, Object> response = new HashMap<>();
                         response.put("message", "Game updated successfully.");
                         response.put("item", saved);
@@ -229,6 +226,7 @@ public class GameAdminController {
                         return ResponseEntity.status(HttpStatus.CONFLICT)
                                 .body(Collections.singletonMap("message", "Game already exists for this year."));
                     } catch (Exception ex) {
+                        log.error("Failed to update game {}", id, ex);
                         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                                 .body(Collections.singletonMap("message", "Unexpected error updating game."));
                     }
@@ -275,14 +273,11 @@ public class GameAdminController {
                     List<String> urls = new ArrayList<>();
                     for (MultipartFile file : files) {
                         try {
-                            if (localStorageService != null) {
-                                urls.add(localStorageService.upload(file, userId));
-                            } else if (s3StorageService != null) {
-                                urls.add(s3StorageService.upload(file, userId));
-                            } else {
-                                urls.add(firebaseStorageService.upload(file, userId));
-                            }
+                            urls.add(localStorageService.upload(file, userId));
                         } catch (Exception ex) {
+                            log.error("Media upload failed for game {}", id, ex);
+                            // Don't leave the files that did upload orphaned on disk.
+                            urls.forEach(url -> localStorageService.delete(url, userId));
                             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                                     .body(Collections.singletonMap("message", "Failed to upload media."));
                         }
@@ -331,6 +326,7 @@ public class GameAdminController {
                                 .body(Collections.singletonMap("message", "Media not found on this game."));
                     }
                     GameItemEntity saved = gameItemRepository.save(entity);
+                    localStorageService.delete(payload.getUrl(), userId);
                     Map<String, Object> response = new HashMap<>();
                     response.put("message", "Media deleted");
                     response.put("gallery", saved.getGallery());
@@ -341,6 +337,33 @@ public class GameAdminController {
                         .body(Collections.singletonMap("message", "Game not found")));
     }
 
+    /** Returns a user-facing error message, or null when the fields are valid. */
+    private static String validate(String name, int year, int completedYear) {
+        int maxYear = Year.now().getValue() + 5;
+        if (name == null || year <= 0) {
+            return "Name and year are required.";
+        }
+        if (year < MIN_YEAR || year > maxYear) {
+            return "Year must be between " + MIN_YEAR + " and " + maxYear + ".";
+        }
+        // 0 means "not completed yet".
+        if (completedYear != 0 && (completedYear < MIN_YEAR || completedYear > maxYear)) {
+            return "Completed year must be between " + MIN_YEAR + " and " + maxYear + ".";
+        }
+        return null;
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static ResponseEntity<?> badRequest(String message) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Collections.singletonMap("message", message));
+    }
+
 }
-
-

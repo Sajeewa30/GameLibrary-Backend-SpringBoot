@@ -2,8 +2,8 @@
 
 This backend now runs entirely on your own machine:
 
-- **Database:** a single SQLite file at `data/gamelibrary.db` (was Railway MySQL).
-- **Images/videos:** saved to the `uploads/` folder (was AWS S3).
+- **Database:** a single SQLite file at `data/gamelibrary.db`.
+- **Images/videos:** saved to the `uploads/` folder.
 - **Login/auth:** still Firebase Authentication (free; needs internet + a
   service-account file — see prerequisites).
 
@@ -28,39 +28,17 @@ folders (`data/` + `uploads/`) that you back up and carry between laptops.
 
 ---
 
-## 2. Bring your existing games over from Railway (one time)
+## 2. Export / import your games as JSON (optional)
 
-Do this **while your Railway database is still reachable** — once Railway deletes
-the trial database, this data is gone unless you have a backup.
-
-1. Get the DB connection details: Railway dashboard → your **MySQL** service →
-   **Variables / Connect**. You need the public proxy host, port, the database
-   name (usually `railway`), and the root password.
-2. Run:
-
-   ```powershell
-   .\scripts\migrate-from-railway.ps1 `
-     -MysqlUrl "jdbc:mysql://HOST:PORT/railway?sslMode=REQUIRED&allowPublicKeyRetrieval=true&serverTimezone=UTC" `
-     -Password "YOUR_DB_PASSWORD"
-   ```
-
-   (An example host/port from your old config was
-   `metro.proxy.rlwy.net:46798` — verify the current value in Railway.)
-
-This exports every game to `games-export.json`, then imports it into
-`data/gamelibrary.db`. It's **read-only** against Railway and safe to re-run
-(games already present are skipped).
-
-**If Railway is already gone** but you ran the emergency `mysqldump` earlier:
-start a throwaway MySQL locally, load the dump, then point the script at it:
+The app has a built-in, database-agnostic export/import (`DataMigrationRunner`).
+It is handy for moving the library to another database later:
 
 ```powershell
-docker run -d --name gl-mysql -e MYSQL_ROOT_PASSWORD=pw -e MYSQL_DATABASE=railway -p 3307:3306 mysql:8
-# wait ~20s for it to start, then load your dump:
-docker exec -i gl-mysql sh -c 'exec mysql -uroot -ppw railway' < gamelibrary-backup.sql
-.\scripts\migrate-from-railway.ps1 -MysqlUrl "jdbc:mysql://localhost:3307/railway?serverTimezone=UTC" -Password "pw"
-docker rm -f gl-mysql
+.\gradlew.bat bootRun --args="--app.migrate.export=games-export.json"   # current DB -> JSON
+.\gradlew.bat bootRun --args="--app.migrate.import=games-export.json"   # JSON -> current DB
 ```
+
+Both commands do their job and exit. Import skips games that already exist.
 
 ---
 
@@ -75,7 +53,7 @@ The backend starts on **http://localhost:8080**. Leave the window open; stop wit
 
 ### Point the frontend at it
 In your **frontend** (Next.js) repo, set the API base URL to
-`http://localhost:8080` — usually an env var like `NEXT_PUBLIC_API_URL` in
+`http://localhost:8080` — the `NEXT_PUBLIC_API_BASE_URL` env var in
 `.env.local` — then run `npm run dev` and open http://localhost:3000.
 (`localhost:3000` and `:5173` are already allowed by the backend's CORS config.)
 
@@ -113,14 +91,6 @@ That single zip is your complete, restorable library. Keep a copy off the laptop
 3. `.\scripts\run-local.ps1` — you're back, with all games and images.
 
 ---
-
-## What about the old images on AWS S3?
-
-Games you migrated still point at their S3 image URLs, so they keep working as
-long as that bucket exists. AWS S3's free tier lasts ~12 months; after that a
-few hundred MB costs pennies, but if you want **truly $0**, download those
-images into `uploads/` and update the URLs. Ask and I can add a small one-off
-task that does this automatically. **New** uploads already go to `uploads/`.
 
 ## Notes / tradeoffs
 

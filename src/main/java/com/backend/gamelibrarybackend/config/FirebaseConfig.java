@@ -22,9 +22,6 @@ public class FirebaseConfig {
     @Value("${firebase.admin.credentials.file:}")
     private String firebaseCredentialsFile;
 
-    @Value("${firebase.storage.bucket:}")
-    private String firebaseStorageBucket;
-
     @Value("${firebase.credentials.b64:}")
     private String firebaseCredentialsBase64;
 
@@ -38,10 +35,6 @@ public class FirebaseConfig {
         GoogleCredentials credentials = loadCredentials();
         FirebaseOptions.Builder builder = FirebaseOptions.builder()
                 .setCredentials(credentials);
-
-        if (StringUtils.hasText(firebaseStorageBucket)) {
-            builder.setStorageBucket(firebaseStorageBucket);
-        }
 
         FirebaseOptions options = builder.build();
 

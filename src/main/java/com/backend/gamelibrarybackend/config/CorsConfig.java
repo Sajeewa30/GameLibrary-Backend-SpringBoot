@@ -28,10 +28,6 @@ public class CorsConfig {
 
         Set<String> origins = new LinkedHashSet<>(List.of(
                 "https://gametracker-sajeewa.netlify.app",
-                "https://*.netlify.app",
-                "https://*.railway.app",
-                "https://*.up.railway.app",
-                "https://*.vercel.app",
                 "http://localhost:3000",
                 "http://localhost:5173"
         ));
