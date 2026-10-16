@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.ArrayList;
 
 @RestController
@@ -35,7 +36,8 @@ public class GameAdminController {
 
     private static final Logger log = LoggerFactory.getLogger(GameAdminController.class);
 
-    private static final int MIN_YEAR = 1950;
+    // Matches the frontend forms.
+    private static final int MIN_YEAR = 1975;
 
     @Autowired
     private GameItemRepository gameItemRepository;
@@ -103,6 +105,35 @@ public class GameAdminController {
     }
 
 
+
+    @GetMapping("/stats")
+    @Operation(summary = "Library stats", description = "Totals plus completed games per year (completedYear, falling back to year), newest year first.")
+    public Map<String, Object> getStats(@RequestAttribute("firebaseUid") String userId) {
+        List<GameItemEntity> games = gameItemRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        long completed = games.stream().filter(GameItemEntity::isCompleted).count();
+
+        // Same rule as /games/byYear: a completed game counts under its
+        // completedYear, or under its year when completedYear is unset.
+        Map<Integer, Long> perYear = new TreeMap<>(Collections.reverseOrder());
+        for (GameItemEntity game : games) {
+            if (!game.isCompleted()) {
+                continue;
+            }
+            int year = game.getCompletedYear() != 0 ? game.getCompletedYear() : game.getYear();
+            perYear.merge(year, 1L, Long::sum);
+        }
+        List<Map<String, Object>> byYear = new ArrayList<>();
+        perYear.forEach((year, count) -> byYear.add(Map.of("year", year, "count", count)));
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("total", (long) games.size());
+        stats.put("completed", completed);
+        stats.put("backlog", games.size() - completed);
+        stats.put("hundredPercent", games.stream().filter(GameItemEntity::isHundredPercent).count());
+        stats.put("favourites", games.stream().filter(GameItemEntity::isFavourite).count());
+        stats.put("byYear", byYear);
+        return stats;
+    }
 
     @GetMapping("/games/byYear/{year}")
     @Operation(summary = "Get games by completed year")
