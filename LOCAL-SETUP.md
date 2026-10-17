@@ -73,12 +73,16 @@ files are uploaded each time, and files you delete in the app are removed from
 Drive too (they sit in Drive's trash for 30 days). The site itself never reads
 from Drive.
 
-One-time setup (already done on this PC):
+One-time setup (on a new PC, run these in your own PowerShell window):
 
 ```powershell
 winget install Rclone.Rclone
-rclone config create gdrive drive scope=drive.file   # sign in to Google in the browser
+.\scripts\setup-drive-backup.ps1   # asks for your Google client ID/secret, then opens Google sign-in
 ```
+
+The client ID and secret come from your own Google Cloud project (a "Desktop
+app" OAuth client with the Drive API enabled and the `drive.file` scope).
+rclone's shared client ID is being retired, so don't rely on it.
 
 `scope=drive.file` means rclone can only see the files it created, nothing else
 in your Drive. To restore from Drive (new laptop, lost data), stop the backend and run:
