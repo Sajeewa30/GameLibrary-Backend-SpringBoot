@@ -64,6 +64,31 @@ just won't reach the backend unless this app is running and exposed.
 
 ## 4. Back up your data (do this regularly)
 
+### Google Drive (recommended): the "Back up to Google Drive" button
+
+The **Stats** page has a **Back up to Google Drive** button. It uploads a safe
+snapshot of the database plus every new or changed image/video to the
+`GameLibrary` folder in your Google Drive. Drive is an **exact mirror**: only new
+files are uploaded each time, and files you delete in the app are removed from
+Drive too (they sit in Drive's trash for 30 days). The site itself never reads
+from Drive.
+
+One-time setup (already done on this PC):
+
+```powershell
+winget install Rclone.Rclone
+rclone config create gdrive drive scope=drive.file   # sign in to Google in the browser
+```
+
+`scope=drive.file` means rclone can only see the files it created, nothing else
+in your Drive. To restore from Drive (new laptop, lost data), stop the backend and run:
+
+```powershell
+.\scripts\restore-from-drive.ps1
+```
+
+### Local zip
+
 ```powershell
 .\scripts\backup.ps1
 # or copy the backup straight into a Google Drive / OneDrive synced folder:
